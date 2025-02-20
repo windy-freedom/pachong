@@ -28,8 +28,8 @@ class BrowserManager:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=options)
+        service = Service()
+        self.driver = webdriver.Chrome(options=options)
         self.driver.set_page_load_timeout(SCRAPER_CONFIG["page_load_timeout"])
 
     def get_page(self, url):
@@ -68,7 +68,7 @@ class BrowserManager:
                 break
             last_height = new_height
 
-    def wait_for_element(self, by, value, timeout=10):
+    def wait_for_element(self, by, value, timeout=None):
         """等待元素出现
         
         Args:
@@ -79,14 +79,25 @@ class BrowserManager:
         Returns:
             element: 找到的元素，如果未找到返回None
         """
+        if timeout is None:
+            timeout = SCRAPER_CONFIG["element_timeout"]
+            
         try:
+            # 等待元素可见
             element = WebDriverWait(self.driver, timeout).until(
-                EC.presence_of_element_located((by, value))
+                EC.visibility_of_element_located((by, value))
             )
             return element
         except TimeoutException:
-            print(f"等待元素超时: {value}")
-            return None
+            try:
+                # 如果可见性检查失败，尝试检查是否存在于DOM中
+                element = WebDriverWait(self.driver, timeout/2).until(
+                    EC.presence_of_element_located((by, value))
+                )
+                return element
+            except TimeoutException:
+                print(f"等待元素超时: {value}")
+                return None
 
     def find_elements(self, by, value):
         """查找所有匹配的元素

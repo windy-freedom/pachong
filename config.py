@@ -26,10 +26,11 @@ BROWSER_CONFIG = {
 
 # 爬虫配置
 SCRAPER_CONFIG = {
-    "page_load_timeout": 30,  # 页面加载超时时间（秒）
-    "scroll_pause_time": 2,   # 滚动暂停时间（秒）
-    "max_retries": 3,         # 最大重试次数
-    "retry_delay": 5,         # 重试延迟（秒）
+    "page_load_timeout": 60,  # 页面加载超时时间（秒）
+    "scroll_pause_time": 3,   # 滚动暂停时间（秒）
+    "max_retries": 5,         # 最大重试次数
+    "retry_delay": 3,         # 重试延迟（秒）
+    "element_timeout": 20,    # 元素等待超时时间（秒）
 }
 
 # CSV文件表头
