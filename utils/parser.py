@@ -23,14 +23,52 @@ class DataParser:
         try:
             # 尝试不同的选择器来提取工具名称
             name = None
-            for selector in ["h2", "h3", ".title", "[class*='name']", "[class*='title']"]:
-                try:
-                    name_element = element.find_element(By.CSS_SELECTOR, selector)
-                    name = name_element.text.strip()
-                    if name:
-                        break
-                except:
-                    continue
+            
+            # 首先尝试直接从链接文本获取名称
+            try:
+                link = element.find_element(By.TAG_NAME, "a")
+                name = link.text.strip()
+            except:
+                pass
+                
+            # 如果链接没有文本，尝试其他选择器
+            if not name:
+                selectors = [
+                    "h2", "h3", "h4",
+                    "a h2", "a h3", "a h4",
+                    ".title", "[class*='name']", "[class*='title']",
+                    "a .title", "a [class*='name']", "a [class*='title']",
+                    "[class*='heading']", "a [class*='heading']"
+                ]
+                for selector in selectors:
+                    try:
+                        name_element = element.find_element(By.CSS_SELECTOR, selector)
+                        name = name_element.text.strip()
+                        if name:
+                            break
+                    except:
+                        continue
+            
+            # 过滤掉不合法的工具名称
+            if name:
+                # 移除常见的广告和标签文本
+                invalid_names = [
+                    "Sponsored by",
+                    "Just launched",
+                    "Featured",
+                    "New",
+                    "Today",
+                    "Most Used",
+                    "Most Saved"
+                ]
+                
+                # 检查是否是无效名称
+                if any(invalid.lower() in name.lower() for invalid in invalid_names):
+                    name = None
+                
+                # 确保名称长度合适且不包含特殊字符
+                elif len(name) < 2 or name.count('\n') > 0 or name.count('-') > 2:
+                    name = None
             
             if not name:
                 print("无法提取工具名称")
@@ -64,12 +102,26 @@ class DataParser:
             
             # 尝试不同的选择器来提取描述
             description = ""
-            for selector in [".description", "p", "[class*='desc']", "[class*='content']"]:
+            selectors = [
+                ".description",
+                "[class*='desc']",
+                "[class*='content']",
+                "p:not(:empty)",  # 非空段落
+                "[class*='text']:not(:empty)",  # 非空文本容器
+                "[class*='info'] p",  # info容器中的段落
+                "div > p:not(:empty)"  # 直接子段落
+            ]
+            
+            for selector in selectors:
                 try:
-                    desc_element = element.find_element(By.CSS_SELECTOR, selector)
-                    desc_text = desc_element.text.strip()
-                    if desc_text and desc_text != name:  # 确保描述不是名称的重复
-                        description = desc_text
+                    desc_elements = element.find_elements(By.CSS_SELECTOR, selector)
+                    for desc_element in desc_elements:
+                        desc_text = desc_element.text.strip()
+                        # 确保描述不是名称的重复，且长度合适
+                        if desc_text and desc_text != name and len(desc_text) > 10:
+                            description = desc_text
+                            break
+                    if description:  # 如果找到了合适的描述就退出循环
                         break
                 except:
                     continue

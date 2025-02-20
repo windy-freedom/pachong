@@ -63,20 +63,32 @@ class ToolifyScraper:
             self.browser.close()
     
     def _load_all_tools(self, selector):
-        """加载所有工具"""
-        print("正在加载所有工具...")
+        """加载工具，限制最多加载100个"""
+        print("正在加载工具(最多100个)...")
         retry_count = 0
         last_count = 0
         
         while retry_count < SCRAPER_CONFIG["max_retries"]:
             try:
-                # 滚动页面
-                self.browser.scroll_page()
-                
                 # 获取当前工具数量
                 current_tools = self.browser.find_elements(By.CSS_SELECTOR, selector)
                 current_count = len(current_tools)
                 
+                # 如果已经加载了100个或更多工具，截取前100个并停止加载
+                if current_count >= 100:
+                    print(f"已加载足够的工具，将截取前100个")
+                    # 使用JavaScript移除多余的元素
+                    script = """
+                    const elements = document.querySelectorAll(arguments[0]);
+                    for (let i = 100; i < elements.length; i++) {
+                        elements[i].remove();
+                    }
+                    """
+                    self.browser.driver.execute_script(script, selector)
+                    break
+                
+                # 滚动页面
+                self.browser.scroll_page()
                 print(f"当前已加载 {current_count} 个工具")
                 
                 # 如果连续两次数量相同，可能已到达底部
@@ -105,9 +117,11 @@ class ToolifyScraper:
                 print("未找到任何工具卡片")
                 return
             
-            print(f"开始解析 {len(tool_cards)} 个工具")
+            total_tools = len(tool_cards)
+            tools_to_parse = min(total_tools, 100)
+            print(f"开始解析前 {tools_to_parse} 个工具")
             
-            for index, card in enumerate(tool_cards, 1):
+            for index, card in enumerate(tool_cards[:100], 1):
                 try:
                     # 解析工具信息
                     tool_info = self.parser.parse_tool_card(card)
